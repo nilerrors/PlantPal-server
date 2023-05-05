@@ -1,0 +1,110 @@
+generator client {
+  provider  = "prisma-client-py"
+  interface = "asyncio"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String             @id @default(cuid())
+  email              String             @unique @db.VarChar(255)
+  first_name         String             @db.VarChar(255)
+  last_name          String             @db.VarChar(255)
+  password           String             @db.VarChar(255)
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+  verification       Verification?
+  plants       Plant[]
+}
+
+model Verification {
+  id          String   @id @default(cuid())
+  verified    Boolean  @default(false)
+  verified_at DateTime @updatedAt
+
+  user_id String @unique
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+enum IrrigationType {
+  time // Times, e.g.: [13:15:00, 01:30:00]
+  period // Amount per period, e.g.: 3 times per week
+}
+
+model Plant {
+  id                           String                     @id @default(cuid())
+  chip_id                      String                     @unique @db.VarChar(16)
+  name                         String                     @default("New Plant") @db.VarChar(255)
+  // waterAmount: 1000 -> 1liter
+  water_amount                 Int                        @default(1000)
+  created_at                   DateTime                   @default(now())
+  updated_at                   DateTime                   @updatedAt
+  auto_irrigation              Boolean                    @default(true)
+  moisture_percentage_treshold Int                        @default(50)
+  moisture_percentage_record   MoisturePercentageRecord[]
+  irrigation_type              IrrigationType             @default(period)
+  irrigations_record           IrrigationRecord[]
+  timestamps                   Timestamp[]
+  periodstamp_times_a_week     Int                        @default(0)
+  periodstamps                 Periodstamp[]
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model MoisturePercentageRecord {
+  id         String   @id @default(cuid())
+  percentage Int
+  at         DateTime @default(now())
+
+  plant_id String
+  plant    Plant  @relation(fields: [plant_id], references: [id], onDelete: Cascade)
+}
+
+model IrrigationRecord {
+  id           String   @id @default(cuid())
+  water_amount Int      @default(1000)
+  at           DateTime @default(now())
+
+  plant_id String
+  plant    Plant  @relation(fields: [plant_id], references: [id], onDelete: Cascade)
+}
+
+enum DayOfWeek {
+  monday
+  tuesday
+  wednesday
+  thursday
+  friday
+  saturday
+  sunday
+  everyday
+}
+
+model Timestamp {
+  // Timestamps indicate a time,
+  // plants will get water on the selected time
+  id          String    @id @default(cuid())
+  day_of_week DayOfWeek @default(everyday)
+  hour        Int
+  minute      Int
+
+  plant_id String
+  plant    Plant  @relation(fields: [plant_id], references: [id])
+}
+
+model Periodstamp {
+  // The user gives an amount of irrigations per week,
+  // based on that the api will generate
+  // random days, hours and minutes
+  id          String    @id @default(cuid())
+  day_of_week DayOfWeek @default(everyday)
+  hour        Int
+  minute      Int
+
+  plant_id String
+  plant    Plant  @relation(fields: [plant_id], references: [id])
+}
