@@ -1,6 +1,7 @@
 generator client {
-  provider  = "prisma-client-py"
-  interface = "asyncio"
+  provider      = "prisma-client-py"
+  interface     = "asyncio"
+  binaryTargets = ["native", "debian-openssl-1.1.x", "linux-musl"]
 }
 
 datasource db {
@@ -9,14 +10,14 @@ datasource db {
 }
 
 model User {
-  id                 String             @id @default(cuid())
-  email              String             @unique @db.VarChar(255)
-  first_name         String             @db.VarChar(255)
-  last_name          String             @db.VarChar(255)
-  password           String             @db.VarChar(255)
-  created_at         DateTime           @default(now())
-  updated_at         DateTime           @updatedAt
-  verification       Verification?
+  id           String        @id @default(cuid())
+  email        String        @unique @db.VarChar(255)
+  first_name   String        @db.VarChar(255)
+  last_name    String        @db.VarChar(255)
+  password     String        @db.VarChar(255)
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+  verification Verification?
   plants       Plant[]
 }
 
