@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi_jwt_auth import AuthJWT
 from app.utils.send_email import send_email_async
 from . import crud, schemas
@@ -22,12 +22,12 @@ async def login(user: schemas.UserLogin, Authorize: AuthJWT = Depends()):
 
 
 @router.post('/signup', status_code=status.HTTP_201_CREATED)
-async def signup(user: schemas.UserSignup):
+async def signup(background_tasks: BackgroundTasks, user: schemas.UserSignup):
     created_user = await crud.create_user(user)
     if created_user is None:
         raise HTTPException(status.HTTP_409_CONFLICT, f"User with email-address '{user.email}' already exists.")
 
-    await send_email_async(
+    background_tasks.add_task(send_email_async,
         'Account Verification',
         user.email,
         {
@@ -52,7 +52,7 @@ async def verify_user(verification_id: str, Authorize: AuthJWT = Depends()):
 
 
 @router.post("/user/resend_verification")
-async def resend_verification(user: schemas.UserResendVerification):
+async def resend_verification(background_tasks: BackgroundTasks, user: schemas.UserResendVerification):
     db_user = await crud.get_user_by_email(user.email)
     if db_user is None or db_user.verification is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"User with email-address '{user.email}' does not exist")
@@ -60,7 +60,7 @@ async def resend_verification(user: schemas.UserResendVerification):
     if db_user.verification is not None and db_user.verification.verified:
         raise HTTPException(status.HTTP_208_ALREADY_REPORTED, f"Account is already verified")
     
-    await send_email_async(
+    background_tasks.add_task(send_email_async,
         'Account Verification',
         user.email,
         {
@@ -70,7 +70,7 @@ async def resend_verification(user: schemas.UserResendVerification):
         },
         'verify.html'
     )
-
+   
     return {
         'message': f'Verification email sent to {user.email}'
     }

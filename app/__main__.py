@@ -1,3 +1,4 @@
+import sys
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -25,6 +26,10 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
+    settings = config.Settings()
+    if '' in settings.dict().values():
+        sys.exit('Invalid Config')
+
     print("Prisma Connected")
     await prisma.connect()
 

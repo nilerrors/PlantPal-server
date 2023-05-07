@@ -1,4 +1,4 @@
-from pydantic import BaseSettings
+from pydantic import BaseSettings, EmailStr
 
 
 class Settings(BaseSettings):
@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     mail_username: str
     mail_password: str
-    mail_from: str
+    mail_from: EmailStr
     mail_port: int = 587
     mail_server: str = 'smtp.office365.com'
     mail_from_name: str = 'PlantPal'
