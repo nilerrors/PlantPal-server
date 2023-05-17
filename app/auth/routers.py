@@ -33,19 +33,29 @@ async def signup(background_tasks: BackgroundTasks, user: schemas.UserSignup):
         {
             'title': 'Verify Account',
             'name': user.first_name,
-            'verification_id': created_user['verification_id']
+            'user_id': created_user['id'],
+            'code': created_user['verification_code']
         },
         'verify.html'
     )
 
-    return {'message': f'Verification email sent to {user.email}'}
+    return {
+        'message': f'Verification email sent to {user.email}',
+        'user': {
+            'id': created_user['id']
+        }
+    }
 
 
-@router.post('/user/verify/{verification_id}')
-async def verify_user(verification_id: str, Authorize: AuthJWT = Depends()):
-    verification_added = await crud.verify_user(verification_id)
+@router.post('/user/verify/{user_id}/{code}')
+async def verify_user(user_id: str, code: str, Authorize: AuthJWT = Depends()):
+    verification_added = await crud.verify_user(user_id, code)
+    if verification_added == 'no account':
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No account found with id '{user_id}'")
+    if verification_added == 'wrong code':
+        raise HTTPException(status.HTTP_406_NOT_ACCEPTABLE, "Wrong verification code")
     if verification_added is None or verification_added.user is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No account found with verification id '{verification_id}'")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No account found with id '{user_id}'")
     
     access_token = Authorize.create_access_token(subject=verification_added.user.email, expires_time=3600)
     return {'access_token': access_token}
@@ -66,7 +76,8 @@ async def resend_verification(background_tasks: BackgroundTasks, user: schemas.U
         {
             'title': 'Verify Account',
             'name': db_user.first_name,
-            'verification_id': db_user.verification.id or ""
+            'user_id': db_user.id or "",
+            'code': db_user.verification.code or ""
         },
         'verify.html'
     )
@@ -74,6 +85,15 @@ async def resend_verification(background_tasks: BackgroundTasks, user: schemas.U
     return {
         'message': f'Verification email sent to {user.email}'
     }
+
+
+@router.post('/user_id')
+async def get_user_id(user: schemas.UserLogin):
+    user_id = await crud.get_user_by_email_password(user.email, user.password)
+    if user_id is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, 'User does not exist')
+    
+    return {'user_id': user_id.id}
 
 
 @router.get('/user/current')

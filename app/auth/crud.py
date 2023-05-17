@@ -1,4 +1,5 @@
 from app.utils import hasher
+from app.utils.generate_random_code import generate_random_code
 from . import schemas
 from app.prisma import prisma
 
@@ -49,7 +50,8 @@ async def create_user(user: schemas.UserSignup) -> dict | None:
     })
 
     verification = await prisma.verification.create(data={
-        'user_id': created_user.id
+        'code': generate_random_code(6),
+        'user_id': created_user.id,
     })
 
     return {
@@ -58,16 +60,26 @@ async def create_user(user: schemas.UserSignup) -> dict | None:
         'first_name': created_user.first_name,
         'last_name': created_user.last_name,
         'verified': verification.verified,
-        'verification_id': verification.id
+        'verification_code': verification.code
     }
 
 
-async def verify_user(verification_id: str):
+async def verify_user(user_id: str, code: str):
+    verification = await prisma.verification.find_first(where={
+        'user_id': user_id,
+    })
+    
+    if verification is None:
+        return 'no account'
+
+    if verification.code != code:
+        return 'wrong code'
+
     return await prisma.verification.update(data={
         'verified': True,
     },
     where={
-        'id': verification_id
+        'id': verification.id,
     },
     include={
         'user': True
